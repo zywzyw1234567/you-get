@@ -205,11 +205,13 @@ def matchall(text, patterns):
     return ret
 
 def launch_player(player, urls):
+    '''what type is urls?'''
     import subprocess
     import shlex
     subprocess.call(shlex.split(player) + list(urls))
 
 def parse_query_param(url, param):
+#better rename with 'get_query_param' ?
     """Parses the query string of a URL and returns the value of a parameter.
 
     Args:
@@ -303,6 +305,7 @@ def get_location(url):
     return response.geturl()
 
 def urlopen_with_retry(*args, **kwargs):
+#do something to remove hard coded range(10)
     for i in range(10):
         try:
             return request.urlopen(*args, **kwargs)
@@ -369,7 +372,7 @@ def post_content(url, headers={}, post_data={}, decoded=True):
     post_data_enc = bytes(parse.urlencode(post_data), 'utf-8')
     response = urlopen_with_retry(req, data=post_data_enc)
     data = response.read()
-
+#replicated code here
     # Handle HTTP compression for gzip and deflate (zlib)
     content_encoding = response.getheader('Content-Encoding')
     if content_encoding == 'gzip':
@@ -388,6 +391,10 @@ def post_content(url, headers={}, post_data={}, decoded=True):
     return data
 
 def url_size(url, faker = False, headers = {}):
+#the name of the function is misleading
+#it returns with http content-length, not len(url)
+
+#running this may consume those one-time token as shown in some issues
     if faker:
         response = urlopen_with_retry(request.Request(url, headers=fake_headers))
     elif headers:
@@ -399,9 +406,12 @@ def url_size(url, faker = False, headers = {}):
     return int(size) if size!=None else float('inf')
 
 def urls_size(urls, faker = False, headers = {}):
+#see url_size
+#could be merged with url_size? like entity_size(url, url_list) ?
     return sum([url_size(url, faker=faker, headers=headers) for url in urls])
 
 def get_head(url, headers = {}, get_method = 'HEAD'):
+#a mess in the offcial documents
     logging.debug('get_head: %s' % url)
 
     if headers:
@@ -413,6 +423,7 @@ def get_head(url, headers = {}, get_method = 'HEAD'):
     return dict(res.headers)
 
 def url_info(url, faker = False, headers = {}):
+#should be renamed with media_info
     logging.debug('url_info: %s' % url)
 
     if faker:
@@ -466,6 +477,8 @@ def url_info(url, faker = False, headers = {}):
     return type, ext, size
 
 def url_locations(urls, faker = False, headers = {}):
+#handling HTTP 301/302? Will this really help?
+#call this before a url which may redirect?
     locations = []
     for url in urls:
         logging.debug('url_locations: %s' % url)
@@ -1084,6 +1097,7 @@ def mime_to_container(mime):
         return mime.split('/')[1]
 
 def parse_host(host):
+#var host is a raw string or processed by another function?#
     """Parses host name and port number from a string.
     """
     if re.match(r'^(\d+)$', host) is not None:
@@ -1138,6 +1152,7 @@ def print_more_compatible(*args, **kwargs):
 
 
 def download_main(download, download_playlist, urls, playlist, **kwargs):
+    #convert an https request to an http one?
     for url in urls:
         if url.startswith('https://'):
             url = url[8:]
@@ -1217,6 +1232,7 @@ def script_main(script_name, download, download_playlist, **kwargs):
     socks_proxy = None
     extractor_proxy = None
     traceback = False
+#remove hard coded timeout
     timeout = 600
     for o, a in opts:
         if o in ('-V', '--version'):
@@ -1381,6 +1397,9 @@ def google_search(url):
     return(videos[0][0])
 
 def url_to_module(url):
+#urllib.urlparse?
+#script_main -> download_main -> any_download to reach here
+#download_main has normalized url to begin with http://
     try:
         video_host = r1(r'https?://([^/]+)/', url)
         video_url = r1(r'https?://[^/]+(.*)', url)
