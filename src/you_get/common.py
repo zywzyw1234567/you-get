@@ -45,13 +45,6 @@ def maybe_print(*s):
     try: print(*s)
     except: pass
 
-def tr(s):
-    if default_encoding == 'utf-8':
-        return s
-    else:
-        return s
-        #return str(s.encode('utf-8'))[2:-1]
-
 # DEPRECATED in favor of match1()
 def r1(pattern, text):
     m = re.search(pattern, text)
@@ -407,7 +400,7 @@ def url_save(url, filepath, bar, refer = None, is_part = False, faker = False, h
             if not is_part:
                 if bar:
                     bar.done()
-                print('Skipping %s: file already exists' % tr(os.path.basename(filepath)))
+                print('Skipping %s: file already exists' % os.path.basename(filepath))
             else:
                 if bar:
                     bar.update_received(file_size)
@@ -416,7 +409,7 @@ def url_save(url, filepath, bar, refer = None, is_part = False, faker = False, h
             if not is_part:
                 if bar:
                     bar.done()
-                print('Overwriting %s' % tr(os.path.basename(filepath)), '...')
+                print('Overwriting %s' % os.path.basename(filepath), '...')
     elif not os.path.exists(os.path.dirname(filepath)):
         os.mkdir(os.path.dirname(filepath))
 
@@ -489,7 +482,7 @@ def url_save_chunked(url, filepath, bar, dyn_callback=None, chunk_size=0, ignore
             if not is_part:
                 if bar:
                     bar.done()
-                print('Skipping %s: file already exists' % tr(os.path.basename(filepath)))
+                print('Skipping %s: file already exists' % os.path.basename(filepath))
             else:
                 if bar:
                     bar.update_received(os.path.getsize(filepath))
@@ -498,7 +491,7 @@ def url_save_chunked(url, filepath, bar, dyn_callback=None, chunk_size=0, ignore
             if not is_part:
                 if bar:
                     bar.done()
-                print('Overwriting %s' % tr(os.path.basename(filepath)), '...')
+                print('Overwriting %s' % os.path.basename(filepath), '...')
     elif not os.path.exists(os.path.dirname(filepath)):
         os.mkdir(os.path.dirname(filepath))
 
@@ -691,7 +684,7 @@ def download_urls(urls, title, ext, total_size, output_dir='.', refer=None, merg
             traceback.print_exc(file=sys.stdout)
             pass
 
-    title = tr(get_filename(title))
+    title = get_filename(title)
     output_filename = get_output_filename(urls, title, ext, output_dir, merge)
     output_filepath = os.path.join(output_dir, output_filename)
 
@@ -706,19 +699,19 @@ def download_urls(urls, title, ext, total_size, output_dir='.', refer=None, merg
 
     if len(urls) == 1:
         url = urls[0]
-        print('Downloading %s ...' % tr(output_filename))
+        print('Downloading %s ...' % output_filename)
         bar.update()
         url_save(url, output_filepath, bar, refer = refer, faker = faker, headers = headers)
         bar.done()
     else:
         parts = []
-        print('Downloading %s.%s ...' % (tr(title), ext))
+        print('Downloading %s.%s ...' % (title, ext))
         bar.update()
         for i, url in enumerate(urls):
             filename = '%s[%02d].%s' % (title, i, ext)
             filepath = os.path.join(output_dir, filename)
             parts.append(filepath)
-            #print 'Downloading %s [%s/%s]...' % (tr(filename), i + 1, len(urls))
+            #print 'Downloading %s [%s/%s]...' % (filename, i + 1, len(urls))
             bar.update_piece(i + 1)
             url_save(url, filepath, bar, refer = refer, is_part = True, faker = faker, headers = headers)
         bar.done()
@@ -799,7 +792,7 @@ def download_urls_chunked(urls, title, ext, total_size, output_dir='.', refer=No
         launch_player(player, urls)
         return
 
-    title = tr(get_filename(title))
+    title = get_filename(title)
 
     filename = '%s.%s' % (title, ext)
     filepath = os.path.join(output_dir, filename)
@@ -815,7 +808,7 @@ def download_urls_chunked(urls, title, ext, total_size, output_dir='.', refer=No
     if len(urls) == 1:
         parts = []
         url = urls[0]
-        print('Downloading %s ...' % tr(filename))
+        print('Downloading %s ...' % filename)
         filepath = os.path.join(output_dir, filename)
         parts.append(filepath)
         url_save_chunked(url, filepath, bar, refer = refer, faker = faker, headers = headers, **kwargs)
@@ -839,12 +832,11 @@ def download_urls_chunked(urls, title, ext, total_size, output_dir='.', refer=No
             print("Can't convert %s files" % ext)
     else:
         parts = []
-        print('Downloading %s.%s ...' % (tr(title), ext))
+        print('Downloading %s.%s ...' % (title, ext))
         for i, url in enumerate(urls):
             filename = '%s[%02d].%s' % (title, i, ext)
             filepath = os.path.join(output_dir, filename)
             parts.append(filepath)
-            #print 'Downloading %s [%s/%s]...' % (tr(filename), i + 1, len(urls))
             bar.update_piece(i + 1)
             url_save_chunked(url, filepath, bar, refer = refer, is_part = True, faker = faker, headers = headers)
         bar.done()
@@ -906,7 +898,7 @@ def download_url_ffmpeg(url,title, ext,params={}, total_size=0, output_dir='.', 
         title = output_filename[:dotPos]
         ext = output_filename[dotPos+1:]
 
-    title = tr(get_filename(title))
+    title = get_filename(title)
 
     ffmpeg_download_stream(url, title, ext, params, output_dir)
 
@@ -985,7 +977,7 @@ def print_info(site_info, title, type, size):
         type_info = "Unknown type (%s)" % type
 
     maybe_print("Site:      ", site_info)
-    maybe_print("Title:     ", unescape_html(tr(title)))
+    maybe_print("Title:     ", unescape_html(title))
     print("Type:      ", type_info)
     print("Size:      ", round(size / 1048576, 2), "MiB (" + str(size) + " Bytes)")
     print()
