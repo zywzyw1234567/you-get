@@ -81,3 +81,5 @@ _*
 *.xml
 /.env
 /.idea
+*.DS_Store
+trivial_test.py
