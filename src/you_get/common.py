@@ -1298,24 +1298,34 @@ def url_to_module(url):
 #urllib.urlparse?
 #script_main -> download_main -> any_download to reach here
 #download_main has normalized url to begin with http://
-    try:
-        video_host = r1(r'https?://([^/]+)/', url)
-        video_url = r1(r'https?://[^/]+(.*)', url)
-        assert video_host and video_url
-    except:
-        url = google_search(url)
-        video_host = r1(r'https?://([^/]+)/', url)
-        video_url = r1(r'https?://[^/]+(.*)', url)
-
-    if video_host.endswith('.com.cn'):
-        video_host = video_host[:-3]
-    domain = r1(r'(\.[^.]+\.[^.]+)$', video_host) or video_host
-    assert domain, 'unsupported url: ' + url
-
-    k = r1(r'([^.]+)', domain)
+    url_obj = parse.urlparse(url)
+#1 for netloc and 2 for path. empty string if not present
+    video_host = url_obj[1]
+    video_url = url_obj[2]
+    if not video_host or not video_url:
+        url_obj = parse.urlparse(google_search(url))
+        video_host = url_obj[1]
+        video_url = url_obj[2]
+    url_nodes = video_host.split('.')
+    domain = ''
+    if len(url_nodes) <= 1:
+        raise ValueError('Ill-formed url {}'.url)
+    if url_nodes[-2] in ['net', 'com', 'org', 'edu', 'gov']:
+        domain = url_nodes[-3]
+    else:
+        domain = url_nodes[-2]
+#the code remove .cn from url, what if a url end with uk or jp?
+#for instance, nicovideo.jp and mtv.co.uk?
+#the regex here tries to get the last two 'node' of the hostname
+#if fail, it will use the original hostname
+#any url reject by the assert here?
+#trying to get the 1st node of domain
+#so this section of code is just trying to get the 2nd node of hostname
+#www.nicovideo.jp works here
+#mtv.co.uk should fail and try to do a universal extract
     from .sites import SITES 
-    if k in SITES:
-        return import_module('.'.join(['you_get', 'extractors', SITES[k]])), url
+    if domain in SITES:
+        return import_module('.'.join(['you_get', 'extractors', SITES[domain]])), url
     else:
         import http.client
         conn = http.client.HTTPConnection(video_host)
