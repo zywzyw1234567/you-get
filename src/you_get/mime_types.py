@@ -1,0 +1,16 @@
+mapping = {
+    'video/3gpp': '3gp',
+    'video/f4v': 'flv',
+    'video/mp4': 'mp4',
+    'video/MP2T': 'ts',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+    'video/x-flv': 'flv',
+    'video/x-ms-asf': 'asf',
+    'audio/mp4': 'mp4',
+    'audio/mpeg': 'mp3',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    }
