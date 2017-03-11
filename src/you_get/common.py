@@ -1150,6 +1150,16 @@ def download_main(download, download_playlist, urls, playlist, **kwargs):
         else:
             download(url, **kwargs)
 
+def force_ip_version(ver):
+#monkey patch
+    import socket
+    getaddrinfo = socket.getaddrinfo
+    af_family = socket.AF_INET if ver == 4 else socket.AF_INET6
+    def patched_getaddrinfo(host, port, family=0, socktype=0, proto=0, flags=0):
+        log.w(host)
+        return getaddrinfo(host, port, af_family, socktype, proto, flags)
+    socket.getaddrinfo = patched_getaddrinfo
+
 def script_main(script_name, download, download_playlist, **kwargs):
     def version():
         log.i('version %s, a tiny downloader that scrapes the web.'
@@ -1184,10 +1194,12 @@ def script_main(script_name, download, download_playlist, **kwargs):
     -s | --socks-proxy <HOST:PORT>      Use an SOCKS5 proxy for downloading.
     -t | --timeout <SECONDS>            Set socket timeout.
     -d | --debug                        Show traceback and other debug info.
+    -4 | --force-ipv4                   force ipv4.
+    -6 | --force-ipv6                   force ipv6.
     '''
 
-    short_opts = 'Vhfiuc:ndF:O:o:p:x:y:s:t:'
-    opts = ['version', 'help', 'force', 'info', 'url', 'cookies', 'no-caption', 'no-merge', 'no-proxy', 'debug', 'json', 'format=', 'stream=', 'itag=', 'output-filename=', 'output-dir=', 'player=', 'http-proxy=', 'socks-proxy=', 'extractor-proxy=', 'lang=', 'timeout=']
+    short_opts = 'Vhfiuc:ndF:O:o:p:x:y:s:t:46'
+    opts = ['version', 'help', 'force', 'info', 'url', 'cookies', 'no-caption', 'no-merge', 'no-proxy', 'debug', 'json', 'format=', 'stream=', 'itag=', 'output-filename=', 'output-dir=', 'player=', 'http-proxy=', 'socks-proxy=', 'extractor-proxy=', 'lang=', 'timeout=', 'force-ipv4', 'force-ipv6']
     if download_playlist:
         short_opts = 'l' + short_opts
         opts = ['playlist'] + opts
@@ -1218,6 +1230,9 @@ def script_main(script_name, download, download_playlist, **kwargs):
     socks_proxy = None
     extractor_proxy = None
     traceback = False
+    force_ipv4 = False
+    force_ipv6 = False
+
     timeout = 600
     for o, a in opts:
         if o in ('-V', '--version'):
@@ -1296,12 +1311,28 @@ def script_main(script_name, download, download_playlist, **kwargs):
             lang = a
         elif o in ('-t', '--timeout'):
             timeout = int(a)
+        elif o in ('-4', '--force-ipv4'):
+            force_ipv4 = True
+        elif o in ('-6', '--force-ipv6'):
+            force_ipv6 = True
         else:
             log.e("try 'you-get --help' for more options")
             sys.exit(2)
     if not args:
         print(help)
         sys.exit()
+
+    if force_ipv4 or force_ipv6:
+        if force_ipv4 and force_ipv6:
+            log.w('force_ipv4 and force_ipv6 flags are both on. Ignored')
+        elif socks_proxy or proxy:
+            log.w("force_ipv4 or force_ipv6 flags don't work with proxy. Ignored")
+        elif os.getenv('http_proxy') or os.getenv('https_proxy'):
+            log.w("env var http_proxy or https_proxy detected. force_ipv4 and force_ipv6 flags ignored")
+        elif force_ipv4:
+            force_ip_version(4)
+        elif force_ipv6:
+            force_ip_version(6)
 
     if (socks_proxy):
         try:
