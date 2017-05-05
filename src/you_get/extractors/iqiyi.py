@@ -90,6 +90,18 @@ def getVMS(tvid, vid):
     vmsreq= url = 'http://cache.m.iqiyi.com/tmts/{0}/{1}/?t={2}&sc={3}&src={4}'.format(tvid,vid,t,sc,src)
     return json.loads(get_content(vmsreq))
 
+def parse_iqiyi_m3u8_seg_url(url):
+    start = re.search(r'&start=(\d+)', url).group(1)
+    end = re.search(r'&end=(\d+)', url).group(1)
+    size = re.search(r'&contentlength=(\d+)', url).group(1)
+    return start, end, size
+
+def parse_iqiyi_m3u8_seg(seg_urls):
+    url_data = []
+    for url in seg_urls:
+        start, end, size = parse_iqiyi_m3u8_seg_url(url)
+        url_data.append((start, end, size, url))
+
 def iqiyi_m3u8_helper(m3u8):
     '''m3u8 should be iterable and every yield return one line, a file object returned by open or page content splited with line ending'''
     segs_url = [[]]
@@ -102,11 +114,10 @@ def iqiyi_m3u8_helper(m3u8):
             segs_url[-1].append(line.strip())
             end = int(re.search(r'&end=(\d+)', line).group(1))
             size = int(re.search(r'&contentlength=(\d+)', line).group(1))
-            assert end != ends[-1]
+            #assert end != ends[-1]
             if end > ends[-1]:
                 ends[-1] = end
             lens[-1] += size
-            print(end, size)
         elif line.startswith('#EXTINF'):
             t = re.search('(\d+)', line).group(1)
             ptime[-1] += int(t)
@@ -115,9 +126,10 @@ def iqiyi_m3u8_helper(m3u8):
             ends.append(0)
             lens.append(0)
             ptime.append(0)
-            print('----')
         elif line.startswith('#EXT-X-ENDLIST'):
             break
+    for i in range(len(ends)):
+        assert(ends[i] == lens[i])
 
 #reconstruct urls...
     res_list = []
@@ -126,8 +138,6 @@ def iqiyi_m3u8_helper(m3u8):
         url = re.sub(r'end=\d+', 'end='+str(ends[pos]), url, 1)
         url = re.sub(r'contentlength=\d+', 'contentlength='+str(lens[pos]), url, 1)
         res_list.append(url)
-    print(ends)
-    print(lens)
     print(res_list)
     return res_list, sum(lens) 
 
@@ -248,7 +258,8 @@ class Iqiyi(VideoExtractor):
             try:
                 m3u_list = get_content(urls[0]).split('\n')
                 urls, file_size = iqiyi_m3u8_helper(m3u_list)
-            except:
+            except Exception as e:
+                print(e)
                 download_url_ffmpeg(urls[0], self.title, 'mp4',
                               output_dir=kwargs['output_dir'],
                               merge=kwargs['merge'],)
