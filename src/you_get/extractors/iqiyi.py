@@ -90,6 +90,42 @@ def getVMS(tvid, vid):
     vmsreq= url = 'http://cache.m.iqiyi.com/tmts/{0}/{1}/?t={2}&sc={3}&src={4}'.format(tvid,vid,t,sc,src)
     return json.loads(get_content(vmsreq))
 
+def iqiyi_m3u8_helper(m3u8):
+    '''m3u8 should be iterable and every yield return one line, a file object returned by open or page content splited with line ending'''
+    segs_url = [[]]
+    ends = [0]
+    lens = [0]
+    ptime = [0]
+
+    for line in m3u8:
+        if line.startswith('http'):
+            segs_url[-1].append(line.strip())
+            end = int(re.search(r'&end=(\d+)', line).group(1))
+            size = int(re.search(r'contentlength=(\d+)', line).group(1))
+            if end > ends[-1]:
+                ends[-1] = end
+            lens[-1] += size
+        elif line.startswith('#EXTINF'):
+            t = re.search('(\d+)', line).group(1)
+            ptime[-1] += int(t)
+        elif line.startswith('#EXT-X-DISCONTINUITY'):
+            segs_url.append([])
+            ends.append(0)
+            lens.append(0)
+            ptime.append(0)
+        elif line.startswith('#EXT-X-ENDLIST'):
+            break
+
+#reconstruct urls...
+    res_list = []
+    for pos, urls in enumerate(segs_url):
+        url = urls[0]
+        url = re.sub(r'end=\d+', 'end='+str(ends[pos]), url, 1)
+        url = re.sub(r'contentlength=\d+', 'contentlength='+str(lens[pos]), url, 1)
+        res_list.append(url)
+    print(res_list)
+    return res_list, sum(lens) 
+
 class Iqiyi(VideoExtractor):
     name = "爱奇艺 (Iqiyi)"
 
@@ -204,9 +240,15 @@ class Iqiyi(VideoExtractor):
             # For legacy main()
             
             #Here's the change!!
-            download_url_ffmpeg(urls[0], self.title, 'mp4',
-                          output_dir=kwargs['output_dir'],
-                          merge=kwargs['merge'],)
+            try:
+                m3u_list = get_content(urls[0]).split('\n')
+                urls, file_size = iqiyi_m3u8_helper(m3u_list)
+            except:
+                download_url_ffmpeg(urls[0], self.title, 'mp4',
+                              output_dir=kwargs['output_dir'],
+                              merge=kwargs['merge'],)
+            else:
+                download_urls(urls, self.title, 'mp4', file_size, output_dir=kwargs['output_dir'], merge=kwargs['merge'])
 
             if not kwargs['caption']:
                 print('Skipping captions.')
