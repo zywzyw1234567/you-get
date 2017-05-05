@@ -101,10 +101,12 @@ def iqiyi_m3u8_helper(m3u8):
         if line.startswith('http'):
             segs_url[-1].append(line.strip())
             end = int(re.search(r'&end=(\d+)', line).group(1))
-            size = int(re.search(r'contentlength=(\d+)', line).group(1))
+            size = int(re.search(r'&contentlength=(\d+)', line).group(1))
+            assert end != ends[-1]
             if end > ends[-1]:
                 ends[-1] = end
             lens[-1] += size
+            print(end, size)
         elif line.startswith('#EXTINF'):
             t = re.search('(\d+)', line).group(1)
             ptime[-1] += int(t)
@@ -113,6 +115,7 @@ def iqiyi_m3u8_helper(m3u8):
             ends.append(0)
             lens.append(0)
             ptime.append(0)
+            print('----')
         elif line.startswith('#EXT-X-ENDLIST'):
             break
 
@@ -123,6 +126,8 @@ def iqiyi_m3u8_helper(m3u8):
         url = re.sub(r'end=\d+', 'end='+str(ends[pos]), url, 1)
         url = re.sub(r'contentlength=\d+', 'contentlength='+str(lens[pos]), url, 1)
         res_list.append(url)
+    print(ends)
+    print(lens)
     print(res_list)
     return res_list, sum(lens) 
 
