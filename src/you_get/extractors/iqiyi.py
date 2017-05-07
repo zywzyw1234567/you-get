@@ -121,14 +121,16 @@ def iqiyi_m3u8_helper(m3u8):
                 ends[-1] = end
             lens[-1] += size
             segs_url[-1].append(line.strip())
-        elif line.startswith('#EXT-X-DISCONTINUITY'):
-            segs_url.append([])
-            ends.append(0)
-            lens.append(0)
+#&start=0 is the mark of new segments, not #EXT-X-DISCONTINUITY
+        #elif line.startswith('#EXT-X-DISCONTINUITY'):
+            #segs_url.append([])
+            #ends.append(0)
+            #lens.append(0)
         elif line.startswith('#EXT-X-ENDLIST'):
             break
     for i in range(len(ends)):
         if ends[i] != lens[i]:
+#for weird m3u8 just return all the urls
             return [item for sublist in segs_url for item in sublist], sum(lens)
 
 #reconstruct urls...
