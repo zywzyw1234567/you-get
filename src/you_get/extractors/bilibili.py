@@ -21,6 +21,19 @@ appkey = 'f3bb208b3d081dc8'
 SECRETKEY_MINILOADER = '1c15888dc316e05a15fdd0a02ed6584f'
 SEC2 = '9b288147e5474dd2aa67085f716c560d'
 
+def check_oversea():
+    url = 'https://interface.bilibili.com/player?id=cid:17778881'
+    xml_lines = get_content(url).split('\n')
+    for line in xml_lines:
+        key = line.split('>')[0][1:]
+        if key == 'country':
+            value = line.split('>')[1].split('<')[0]
+            if value != '中国':
+                return True
+            else:
+                return False
+    return False
+
 def check_sid():
     if not cookies:
         return False
@@ -33,7 +46,6 @@ def fetch_sid(cid, aid):
     url = 'http://interface.bilibili.com/player?id=cid:{}&aid={}'.format(cid, aid)
     cookies = http.cookiejar.CookieJar()
     req = urllib.request.Request(url)
-    print(url)
     res = urllib.request.urlopen(url)
     cookies.extract_cookies(res, req)
     for c in cookies:
@@ -41,10 +53,13 @@ def fetch_sid(cid, aid):
             return c.value
     raise
 
-def sign(cid, fallback=False):
-    base_req = 'cid={}&from=miniplay&player=1'.format(cid)
+def sign(cid, fallback=False, oversea=False):
+    base_req = 'cid={}&player=1'.format(cid)
+    if oversea:
+        base_req = 'accel=1&' + base_req
     if fallback:
         base_req += '&quality=2'
+    base_req = base_req + '&ts=' + str(int(time.time()))
     to_sign = (base_req + SECRETKEY_MINILOADER).encode('utf8')
     return base_req + '&sign=' + hashlib.md5(to_sign).hexdigest()
 
@@ -157,7 +172,9 @@ def bilibili_download_by_cids(cids, title, output_dir='.', merge=True, info_only
 
 def test_bili_cdns(urls_list):
     import urllib.error
-    headers = dict(referer='bilibili.com')
+    headers = {}
+    headers['Referer'] = 'bilibili.com'
+    headers['User-Agent'] = 'Mozilla/5.0'
     for pos, urls in enumerate(urls_list):
         try:
             _, t, size = url_info(urls[0], headers=headers)
@@ -167,7 +184,7 @@ def test_bili_cdns(urls_list):
             return pos, t, size
     return -1, None, 0
 
-def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False, is_bangumi=False, aid=None):
+def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=False, is_bangumi=False, aid=None, oversea=False):
         endpoint = 'https://interface.bilibili.com/playurl?'
         endpoint_paid = 'https://bangumi.bilibili.com/player/web_api/playurl?'
         if is_bangumi:
@@ -178,7 +195,7 @@ def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=F
                 headers = dict(referer='bilibili.com')
             url = endpoint_paid + sign_bangumi(cid)
         else:
-            url = endpoint + sign(cid)
+            url = endpoint + sign(cid, oversea=oversea)
             headers = dict(referer='bilibili.com')
         content = get_content(url, headers)
         urls_list, size = parse_cid_playurl(content)
@@ -189,7 +206,7 @@ def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=F
                 raise
             else:
                 log.w('CDNs failed. Trying fallback')
-                url = endpoint + sign(cid, fallback=True)
+                url = endpoint + sign(cid, fallback=True, oversea=oversea)
                 headers = dict(referer='bilibili.com')
                 content = get_content(url, headers)
                 urls_list, size = parse_cid_playurl(content)
@@ -208,7 +225,9 @@ def bilibili_download_by_cid(cid, title, output_dir='.', merge=True, info_only=F
         if not info_only:
             while True:
                 try:
-                    headers=dict(referer='bilibili.com')
+                    headers = {}
+                    headers['Referer'] = 'bilibili.com'
+                    headers['User-Agent'] = 'Mozilla/5.0'
                     download_urls(urls, title, type_, total_size=size, output_dir=output_dir, merge=merge, timeout=15, headers=headers)
                 except socket.timeout:
                     continue
@@ -230,6 +249,8 @@ def bilibili_live_download_by_cid(cid, title, output_dir='.', merge=True, info_o
 
 
 def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs):
+    #oversea = check_oversea()
+    oversea = False
     url = url_locations([url])[0]
     html = get_content(url)
 
@@ -258,7 +279,7 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
         while ep_ids[idx] != episode_id:
             idx += 1
         title = '%s [%s %s]' % (title, idx+1, long_title)
-        bilibili_download_by_cid(str(cid), title, output_dir=output_dir, merge=merge, info_only=info_only, is_bangumi=True, aid=aid)
+        bilibili_download_by_cid(str(cid), title, output_dir=output_dir, merge=merge, info_only=info_only, is_bangumi=True, aid=aid, oversea=oversea)
 
     else:
         tc_flashvars = match1(html, r'"bili-cid=\d+&bili-aid=\d+&vid=([^"]+)"')
@@ -310,7 +331,8 @@ def bilibili_download(url, output_dir='.', merge=True, info_only=False, **kwargs
                                              completeTitle,
                                              output_dir=output_dir,
                                              merge=merge,
-                                             info_only=info_only)
+                                             info_only=info_only,
+                                             oversea=oversea)
 
         elif t == 'vid':
             sina_download_by_vid(cid, title=title, output_dir=output_dir, merge=merge, info_only=info_only)
